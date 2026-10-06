@@ -9,7 +9,6 @@
 · 修复锁屏 / 解锁音效无法替换的问题
 · 根因：/system/product 是符号链接，直接挂 /system/media 时 KSU 不跟随软链，导致 SystemUI 读不到替换文件
 · 方案：源路径改为 system/product/media/audio/，同时手动 bind mount 到 /product/
-· 修复 FadeIn.ogg 拼写错误（原为 Fadeln.ogg，小写 L）
 · 修复 /product 只读分区无法新增文件的挂载失败：仅对系统已有文件生效，新文件需改为系统已有文件名
 · 修复日志无限增长问题：超过 3000 行自动保留最近 1000 行
 · 修复 module.prop 直接 sed -i 写入的原子性问题：改为临时文件
@@ -38,18 +37,8 @@
 · 仅保留「自带挂载」一个开关
 · 移除 /storage/emulated/0/Android/Hyper铃声日志/ 日志路径（改为模块目录）
 · 移除元模块强制同步逻辑（改由「自带挂载」开关控制）
-· 移除对 system/media/audio/ 路径的依赖（避免与 /system/product 软链混淆）
-
-⚠️ 已知限制
-
-· 仅支持 HyperOS 3/4 · Android 15-17，不支持 Android 9 及以下（无 /product 分区）
-· 内核要求 6.6+
-· 新增文件到只读分区受限于系统已有文件名：只读分区（EROFS）无法创建新文件，新增音频须改名为系统已有文件名才能生效
-
----
-
+· 移除对 system/media/audio/ 路径的依赖（避免与 /system/product 软链混连
 📦 安装说明
-
 1. KernelSU 中刷入模块
 2. 重启
 3. 打开 WebUI 查看挂载状态
