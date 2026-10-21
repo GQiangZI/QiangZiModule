@@ -32,12 +32,19 @@ KernelSU → 超级用户 → 点「系统界面」(com.android.systemui)
 > 注意两点：① App Profile 必须是「自定义」，选「默认」时看不到这个开关；
 > ② 列表里可能有两个「系统界面」（其中一个带 `USER 999`），选不带标记的那个。
 
-**怎么确认已经好了**：模块列表里看描述
+**怎么确认已经好了**：打开模块 WebUI，看最上面那行挂载状态
 
-| 描述 | 含义 |
+| 显示 | 含义 |
 |---|---|
-| `[ 闹✅ 铃✅ 通✅ UI✅ ] 已就绪` | 四类都挂上了，正常 |
-| `[ 闹✅ 铃✅ 通❌ UI✅ ] 已就绪` | 有 ❌ 的那一类没挂上，看 `post-fs-data.log` |
+| `全局挂载 5/5 · 系统界面 5/5` | 四类都挂上了，正常 |
+| `全局挂载 5/5 · 系统界面 x/5` | 就是上面那个「卸载模块」开关还没关 |
+| `全局挂载 0/5` | 模块没挂上，先确认已在管理器里启用，再重启 |
+
+命令行等价写法（只读，不会重启界面）：
+
+```sh
+su -c 'sh /data/adb/modules/Hyperos_audio_core/reload.sh check'
+```
 
 ---
 
@@ -140,17 +147,26 @@ action.sh                「操作」按钮
 uninstall.sh             卸载清理
 common/                  settings.sh / settings-cli.sh（selfmount 开关）
 webroot/                 WebUI 页面
-system/product/media/audio/   音效素材（binary，建议 Git LFS）
+system/product/media/audio/   只保留目录结构与 .gitkeep（音效文件不入库）
 CHANGELOG.md             更新日志
 update.json              在线更新清单
+LICENSE                  MIT
 ```
 
-> 音效素材接近 2 MB 全是二进制，建议用 Git LFS 管理，否则仓库每次改音效都会膨胀一整份。
+> **音效文件（`.ogg` / `.mp3`）不进仓库**。仓库里每个音效目录只放一个空的
+> `.gitkeep` 占位，把目录结构撑起来。素材只在 **Release 附件 zip** 里分发；
+> 想自己替换，把文件按同名放进对应目录即可（见上面「自定义音效」）。
 
 ## 已知问题
 
-- 仓库早期根目录的 `system` 是个 1 字节文件而非目录，需删除。
-- 未提供 LICENSE。
+- 无。早期根目录那个 1 字节的 `system` 文件已在 v2.1 提交中删除。
+
+## 许可
+
+代码以 [MIT](LICENSE) 授权，可自由使用、修改、再分发，保留版权声明即可。
+
+音效素材来自各自版权方（三星 / 苹果 / 小米），仅作个人替换使用，
+**不在本仓库分发**，也不在 MIT 授权范围内。
 
 ## 更新日志
 
