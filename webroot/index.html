@@ -19,7 +19,7 @@
   .version-tag { font-size: 11px; color: #999; background: #e8e8e8; padding: 3px 10px; border-radius: 10px; }
   .card { border-radius: 14px; padding: 18px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
   .card-title { font-size: 16px; font-weight: 600; margin-bottom: 14px; }
-  .card--dark { color: #fff; }
+  .card--dark { color: #fff; background: #2f3a45; }
   .card--dark .card-title { color: #fff; font-size: 17px; }
   .card--dark .info-row { border-bottom-color: rgba(255,255,255,0.15); }
   .card--dark .info-label { color: rgba(255,255,255,0.85); font-weight: 500; }
@@ -44,6 +44,8 @@
   .status-ok .status-dot { background: #66ffbb; box-shadow: 0 0 8px rgba(102,255,187,0.7); }
   .status-fail .status-dot { background: #ff8888; box-shadow: 0 0 8px rgba(255,136,136,0.7); }
   .status-wait .status-dot { background: rgba(255,255,255,0.4); }
+  .status-neutral { background: rgba(0,0,0,0.20); color: rgba(255,255,255,0.92); }
+  .status-neutral .status-dot { background: rgba(255,255,255,0.55); box-shadow: none; }
   .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid transparent; }
   .toggle-row:last-child { border-bottom: none; }
   .toggle-label { font-size: 15px; }
@@ -122,6 +124,32 @@
   .btn[disabled] { opacity: .45; }
   .reload-out { margin: 12px 0 0; padding: 12px; background: rgba(0,0,0,0.28); border-radius: 10px; font-size: 11.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; color: rgba(255,255,255,.9); max-height: 220px; overflow: auto; font-family: ui-monospace, Menlo, monospace; }
 
+  /* ═══════ 音效刷新卡（v2.1 修正对比度）═══════ */
+  .reload-card { background: linear-gradient(135deg, #0e7490 0%, #0891b2 55%, #06a5c9 100%); }
+  .reload-card .reload-tip {
+    color: rgba(255, 255, 255, 0.95);
+    font-size: 12.5px;
+    line-height: 1.65;
+  }
+  .reload-card .btn--ghost {
+    background: rgba(255, 255, 255, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    color: #ffffff;
+  }
+  .reload-card .btn--ghost:active { background: rgba(255, 255, 255, 0.34); }
+  .reload-card .btn--main {
+    background: #ffffff;
+    color: #0b4a5c;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+  }
+  .reload-card .reload-out {
+    background: rgba(0, 0, 0, 0.40);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    font-size: 12px;
+    line-height: 1.65;
+  }
+
   .toast { position: fixed; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; z-index: 999; opacity: 0; transition: opacity 0.3s; pointer-events: none; max-width: 80vw; text-align: center; }
   .toast.show { opacity: 1; }
 </style>
@@ -147,7 +175,7 @@
     <div class="info-row"><span class="info-label">模块名称</span><span class="info-value" id="info-name">小米音效定制模块</span></div>
     <div class="info-row"><span class="info-label">版本</span><span class="info-value" id="info-version">—</span></div>
     <div class="info-row"><span class="info-label">支持系统</span><span class="info-value">HyperOS 3/4 · Android 15-17</span></div>
-    <div class="info-row"><span class="info-label">元模块</span><span class="info-value" id="meta-status">检测中...</span></div>
+    <div class="info-row"><span class="info-label">元模块</span><span class="info-value" id="meta-status">检测中…</span></div>
   </section>
 
   <section class="card card--dark status-card">
@@ -207,7 +235,7 @@
         <span class="community-arrow">›</span>
       </a>
       <a class="community-link" href="https://www.coolapk.com/u/1344888">
-        <div class="community-icon cp-icon"><img src="coolapk_logo.png" alt="酷安" style="width:100%;height:100%;border-radius:10px;object-fit:cover;display:block"></div>
+        <div class="community-icon cp-icon"><img src="data:image/png;base64,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" alt="酷安" style="width:100%;height:100%;border-radius:10px;object-fit:cover;display:block"></div>
         <div class="community-info"><div class="community-name">酷安 · 作者主页</div><div class="community-desc">关注一下，探索代码的乐趣</div></div>
         <span class="community-arrow">›</span>
       </a>
@@ -219,13 +247,12 @@
     <div class="info-row"><span class="info-label">🌾作者</span><span class="info-value"><span class="coolapk-icon">酷</span>強子Loner</span></div>
     <div class="info-row"><span class="info-label">🍓兼容性</span><span class="info-value">HyperOS 3/4 · Android 15-17</span></div>
     <div class="info-row"><span class="info-label">🥭内核要求</span><span class="info-value">Kernel 6.6+</span></div>
-    <div class="info-row"><span class="info-label">🍉元模块</span><span class="info-value">自动同步</span></div>
+    <div class="info-row"><span class="info-label">🍉元模块</span><span class="info-value">不启用则忽略</span></div>
   </section>
 </main>
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-<script src="status.js"></script>
 <script>
 (function () {
   'use strict';
@@ -268,6 +295,31 @@
 
   /* ═══════════ 状态渲染 ═══════════ */
   var STATUS_IDS = ['st-alarm', 'st-notif', 'st-ring', 'st-ui', 'st-meta'];
+  var LAST_STATUS = null;   /* 最近一次状态数据 */
+  var SELFMOUNT = 1;        /* 模块自挂载开关 */
+
+  function isSelfMountOn() {
+    return SELFMOUNT === 1 || SELFMOUNT === '1' || SELFMOUNT === true;
+  }
+
+  /* 元模块只有三种真实状态，别把「没装」显示成错误 */
+  function renderMeta() {
+    var el = $('st-meta'); if (!el) return;
+    var span = el.querySelector('span:last-child');
+    var cls, grid, info;
+    if (!LAST_STATUS) {
+      cls = 'status-neutral'; grid = '元模块 未知'; info = '未知';
+    } else if (LAST_STATUS.metaModule) {
+      cls = 'status-ok'; grid = '元模块 已接管'; info = '已接管';
+    } else if (isSelfMountOn()) {
+      cls = 'status-neutral'; grid = '元模块 未使用'; info = '未使用（模块自挂载）';
+    } else {
+      cls = 'status-fail'; grid = '元模块 缺失'; info = '缺失，且模块自挂载已关';
+    }
+    el.className = 'status-item ' + cls;
+    if (span) span.textContent = grid;
+    setText('meta-status', info);
+  }
 
   function resetStatus() {
     STATUS_IDS.forEach(function (id) {
@@ -297,18 +349,13 @@
     setStatusItem('st-ring',  !!mount.ringtones,     '铃声',   ringList.length);
     setStatusItem('st-ui',    !!mount.ui,            'UI 音效', uiList.length);
 
-    var stMeta = $('st-meta');
-    if (stMeta) {
-      stMeta.className = 'status-item ' + (st.metaModule ? 'status-ok' : 'status-fail');
-      var span = stMeta.querySelector('span:last-child');
-      if (span) span.textContent = '元模块 ' + (st.metaModule ? '✅' : '❌');
-    }
+    LAST_STATUS = st;
+    renderMeta();
 
     setText('dev-model',   st.model   || 'N/A');
     setText('dev-android', st.android || 'N/A');
     setText('dev-kernel',  st.kernel  || 'N/A');
     setText('dev-root',    st.root    || 'N/A');
-    setText('meta-status', st.metaModule ? '✅ 已同步' : '未安装');
 
     /* ── 名称 & 版本跟随 module.prop ── */
     var vShow = st.versionDisplay
@@ -324,11 +371,12 @@
     ['dev-model', 'dev-android', 'dev-kernel', 'dev-root'].forEach(function (id) {
       setText(id, '读取失败');
     });
-    setText('meta-status', '未知');
     STATUS_IDS.forEach(function (id) {
       var el = $(id);
-      if (el) el.className = 'status-item status-fail';
+      if (el && id !== 'st-meta') el.className = 'status-item status-fail';
     });
+    LAST_STATUS = null;
+    renderMeta();
   }
 
   function loadStatus() {
@@ -339,7 +387,7 @@
       return;
     }
 
-    fetch(MODDIR + '/webroot/webui_status.json?t=' + Date.now())
+    fetch('webui_status.json?t=' + Date.now(), { cache: 'no-store' })
       .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
       .then(applyStatus)
       .catch(function (err) {
@@ -364,6 +412,9 @@
       if (v === undefined || v === null) el.checked = def.def === 1;
       else el.checked = (v === 1 || v === '1' || v === true);
     });
+    var sm = $('set-selfmount');
+    SELFMOUNT = (sm && sm.checked) ? 1 : 0;
+    renderMeta();
   }
 
   function loadSettings() {
