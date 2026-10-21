@@ -3,5 +3,5 @@ name=小米音效定制模块
 version=v2.1
 versionCode=21
 author=酷安-強子Loner
-description=[ 检测中... ] 已就绪.替换解锁、锁屏、充电以及加入三星口哨、车锁提示音、苹果三全音
+description=替换解锁、锁屏、充电音效；含三星口哨、车锁提示音、苹果三全音
 updateJson=https://raw.githubusercontent.com/GQiangZI/QiangZiModule/main/update.json
