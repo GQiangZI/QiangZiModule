@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>小米音效定制模块</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    background: #f5f5f5; color: #333; padding: 16px;
+    padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px));
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .info-value, .card-title, .version-tag { -webkit-user-select: text; user-select: text; }
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .header h1 { font-size: 22px; font-weight: 700; color: #222; }
+  .version-tag { font-size: 11px; color: #999; background: #e8e8e8; padding: 3px 10px; border-radius: 10px; }
+  .card { border-radius: 14px; padding: 18px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .card-title { font-size: 16px; font-weight: 600; margin-bottom: 14px; }
+  .card--dark { color: #fff; }
+  .card--dark .card-title { color: #fff; font-size: 17px; }
+  .card--dark .info-row { border-bottom-color: rgba(255,255,255,0.15); }
+  .card--dark .info-label { color: rgba(255,255,255,0.85); font-weight: 500; }
+  .card--dark .info-value { color: #fff; font-weight: 600; }
+  .device-card { background: linear-gradient(135deg, #4a3080 0%, #5c2d91 100%); }
+  .info-card { background: linear-gradient(135deg, #2563a8 0%, #1a8fc7 100%); }
+  .status-card { background: linear-gradient(135deg, #0d9668 0%, #0aa876 100%); }
+  .settings-card { background: linear-gradient(135deg, #b85070 0%, #c9607a 100%); }
+  .community-card { background: linear-gradient(135deg, #0c6da0 0%, #6d3ab5 100%); }
+  .about-card { background: linear-gradient(135deg, #162d4a 0%, #1e4466 50%, #255580 100%); }
+  .about-card .info-row { border-bottom-color: rgba(255,255,255,0.12); }
+  .info-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid transparent; }
+  .info-row:last-child { border-bottom: none; }
+  .info-label { font-size: 14px; font-weight: 500; }
+  .info-value { font-size: 14px; font-weight: 600; text-align: right; max-width: 60%; word-break: break-all; }
+  .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .status-item { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; }
+  .status-ok { background: rgba(0,80,40,0.55); color: #fff; }
+  .status-fail { background: rgba(100,0,0,0.5); color: #fff; }
+  .status-wait { background: rgba(0,0,0,0.15); color: rgba(255,255,255,0.7); }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .status-ok .status-dot { background: #66ffbb; box-shadow: 0 0 8px rgba(102,255,187,0.7); }
+  .status-fail .status-dot { background: #ff8888; box-shadow: 0 0 8px rgba(255,136,136,0.7); }
+  .status-wait .status-dot { background: rgba(255,255,255,0.4); }
+  .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid transparent; }
+  .toggle-row:last-child { border-bottom: none; }
+  .toggle-label { font-size: 15px; }
+  .toggle-desc { font-size: 12px; margin-top: 3px; opacity: 0.85; }
+  .card--dark .toggle-row { border-bottom-color: rgba(255,255,255,0.15); }
+  .card--dark .toggle-label { color: #fff; font-weight: 600; }
+  .toggle-switch { position: relative; width: 48px; height: 28px; flex-shrink: 0; }
+  .toggle-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+  .slider { position: absolute; inset: 0; cursor: pointer; background: rgba(255,255,255,0.3); transition: 0.25s; border-radius: 28px; }
+  .slider::before { content: ""; position: absolute; height: 22px; width: 22px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: 0.25s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+  .toggle-switch input:checked + .slider { background: #4caf50; }
+  .toggle-switch input:checked + .slider::before { transform: translateX(20px); }
+  .toggle-switch input:focus-visible + .slider { outline: 2px solid #fff; outline-offset: 2px; }
+
+  .toggle-row-centered {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 14px 0 6px;
+    gap: 6px;
+  }
+  .toggle-row-centered .toggle-label {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+  }
+  .toggle-row-centered .toggle-desc {
+    font-size: 12px;
+    opacity: 0.85;
+    color: #fff;
+    margin-bottom: 6px;
+  }
+  .toggle-row-centered .toggle-switch {
+    margin-top: 4px;
+  }
+
+  /* ═══════ 元模块提示块 ═══════ */
+  .meta-tip {
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: rgba(0, 0, 0, 0.18);
+    border-radius: 10px;
+    border-left: 3px solid rgba(255, 255, 255, 0.5);
+  }
+  .meta-tip-title {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #fff;
+  }
+  .meta-tip-text {
+    font-size: 12px;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .community-links { display: flex; flex-direction: column; gap: 10px; }
+  .community-link { display: flex; align-items: center; gap: 12px; background: rgba(0,0,0,0.15); padding: 13px 14px; border-radius: 12px; text-decoration: none; color: #fff; -webkit-tap-highlight-color: transparent; }
+  .community-link:active { background: rgba(0,0,0,0.25); }
+  .community-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; overflow: hidden; }
+  .qq-icon { background: rgba(18,183,245,0.9); }
+  .tg-icon { background: rgba(0,136,204,0.9); }
+  .cp-icon { background: #2aaa4a; }
+  .community-info { flex: 1; min-width: 0; }
+  .community-name { font-size: 15px; font-weight: 600; }
+  .community-desc { font-size: 12px; opacity: 0.9; margin-top: 2px; }
+  .community-arrow { font-size: 16px; opacity: 0.7; }
+  .coolapk-icon { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 7px; background: #2aaa4a; color: #fff; font-size: 15px; font-weight: 900; margin-right: 8px; vertical-align: middle; box-shadow: 0 2px 6px rgba(42,170,74,0.5); font-family: "PingFang SC", "Microsoft YaHei", sans-serif; letter-spacing: -1px; border: 1.5px solid rgba(255,255,255,0.2); }
+  .reload-tip { font-size: 12px; line-height: 1.6; opacity: .85; margin-bottom: 14px; }
+  .reload-btns { display: flex; gap: 10px; }
+  .btn { flex: 1; padding: 12px 0; border-radius: 12px; border: none; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .btn--main { background: #fff; color: #111; }
+  .btn--ghost { background: rgba(255,255,255,0.14); color: #fff; }
+  .btn:active { opacity: .75; }
+  .btn[disabled] { opacity: .45; }
+  .reload-out { margin: 12px 0 0; padding: 12px; background: rgba(0,0,0,0.28); border-radius: 10px; font-size: 11.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; color: rgba(255,255,255,.9); max-height: 220px; overflow: auto; font-family: ui-monospace, Menlo, monospace; }
+
+  .toast { position: fixed; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; z-index: 999; opacity: 0; transition: opacity 0.3s; pointer-events: none; max-width: 80vw; text-align: center; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <h1 id="app-title">🎵 音效定制</h1>
+  <span class="version-tag" id="app-version">—</span>
+</header>
+
+<main>
+  <section class="card card--dark device-card">
+    <div class="card-title">📱 设备信息</div>
+    <div class="info-row"><span class="info-label">型号</span><span class="info-value" id="dev-model">检测中...</span></div>
+    <div class="info-row"><span class="info-label">系统</span><span class="info-value" id="dev-android">检测中...</span></div>
+    <div class="info-row"><span class="info-label">内核</span><span class="info-value" id="dev-kernel">检测中...</span></div>
+    <div class="info-row"><span class="info-label">Root</span><span class="info-value" id="dev-root">检测中...</span></div>
+  </section>
+
+  <section class="card card--dark info-card">
+    <div class="card-title">📋 基本信息</div>
+    <div class="info-row"><span class="info-label">模块名称</span><span class="info-value" id="info-name">小米音效定制模块</span></div>
+    <div class="info-row"><span class="info-label">版本</span><span class="info-value" id="info-version">—</span></div>
+    <div class="info-row"><span class="info-label">支持系统</span><span class="info-value">HyperOS 3/4 · Android 15-17</span></div>
+    <div class="info-row"><span class="info-label">元模块</span><span class="info-value" id="meta-status">检测中...</span></div>
+  </section>
+
+  <section class="card card--dark status-card">
+    <div class="card-title">📊 挂载状态</div>
+    <div class="status-grid" id="status-grid">
+      <div class="status-item status-wait" id="st-alarm"><span class="status-dot"></span><span>闹钟</span></div>
+      <div class="status-item status-wait" id="st-notif"><span class="status-dot"></span><span>通知音</span></div>
+      <div class="status-item status-wait" id="st-ring"><span class="status-dot"></span><span>铃声</span></div>
+      <div class="status-item status-wait" id="st-ui"><span class="status-dot"></span><span>UI 音效</span></div>
+      <div class="status-item status-wait" id="st-meta"><span class="status-dot"></span><span>元模块</span></div>
+    </div>
+  </section>
+
+  <section class="card card--dark reload-card">
+    <div class="card-title">🔊 音效刷新</div>
+    <div class="reload-tip">换完音效、或刚关掉「卸载模块」后，点一下让系统界面重新读一遍。平时不用管，模块不会自己重启界面。</div>
+    <div class="reload-btns">
+      <button class="btn btn--ghost" id="btn-check">检测状态</button>
+      <button class="btn btn--main" id="btn-reload">刷新音效</button>
+    </div>
+    <pre class="reload-out" id="reload-out" hidden></pre>
+  </section>
+
+  <section class="card card--dark settings-card">
+    <div class="card-title">🔧 设置</div>
+
+    <div class="toggle-row-centered">
+      <div class="toggle-label">自带挂载（常开）</div>
+      <div class="toggle-desc">关闭则由元模块挂载（重启生效）</div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="set-selfmount" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="meta-tip">
+      <div class="meta-tip-title">💡 关于元模块</div>
+      <div class="meta-tip-text">
+        元模块（Magic Mount · hybrid_mount · meta-overlayfs · mountify）会接管模块挂载，支持新增文件到只读分区。<br>
+  若模块工作正常，不必理会（常开）；若失效或冲突，保持关闭由元模块处理（自行配置），
+  开：模块自己挂，能保证替换生效（bind mount 已经验证过) 关：省掉脚本挂载，但不保证元模块能补上（自行配置，不做技术指导）
+      </div>
+    </div>
+  </section>
+
+  <section class="card card--dark community-card">
+    <div class="card-title">💬 加入我们</div>
+    <div class="community-links">
+      <a class="community-link" href="https://qun.qq.com/universal-share/share?ac=1&amp;authKey=5abfBrNtkz%2FMrnnsibPqtORVFeGvg9cYj9C14aV9ccWTFN3%2Fj%2BsquYKlKjrqnJ0t&amp;busi_data=eyJncm91cENvZGUiOiIyNTEwNDI5ODAiLCJ0b2tlbiI6InVpclRBMVo4ZXNUNVVxU3lVS2I2ME1sa0xlRFFNV2x1K0hIZWdsUE1hRzJoQll2ZnA3YmRobTdsUGNLUjB2MUciLCJ1aW4iOiIzMTg1MzQ2OTYifQ%3D%3D&amp;data=EUG2yVlBS1uUpunViP0YWrPWgDX8IojJdsfNZOI6ksG5v3dxqNZ5a6U4gWDygU05OGkz4SMdySWRY5EIqZIonA&amp;svctype=4&amp;tempid=h5_group_info">
+        <div class="community-icon qq-icon">🐧</div>
+        <div class="community-info"><div class="community-name">QQ 交流群</div><div class="community-desc">分享小米主题以及玩机指导</div></div>
+        <span class="community-arrow">›</span>
+      </a>
+      <a class="community-link" href="https://t.me/HyperOsShare">
+        <div class="community-icon tg-icon">✈️</div>
+        <div class="community-info"><div class="community-name">Telegram 频道</div><div class="community-desc">获取更新通知，各类玩机资源</div></div>
+        <span class="community-arrow">›</span>
+      </a>
+      <a class="community-link" href="https://www.coolapk.com/u/1344888">
+        <div class="community-icon cp-icon"><img src="coolapk_logo.png" alt="酷安" style="width:100%;height:100%;border-radius:10px;object-fit:cover;display:block"></div>
+        <div class="community-info"><div class="community-name">酷安 · 作者主页</div><div class="community-desc">关注一下，探索代码的乐趣</div></div>
+        <span class="community-arrow">›</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="card card--dark about-card">
+    <div class="card-title">ℹ️ 关于</div>
+    <div class="info-row"><span class="info-label">🌾作者</span><span class="info-value"><span class="coolapk-icon">酷</span>強子Loner</span></div>
+    <div class="info-row"><span class="info-label">🍓兼容性</span><span class="info-value">HyperOS 3/4 · Android 15-17</span></div>
+    <div class="info-row"><span class="info-label">🥭内核要求</span><span class="info-value">Kernel 6.6+</span></div>
+    <div class="info-row"><span class="info-label">🍉元模块</span><span class="info-value">自动同步</span></div>
+  </section>
+</main>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="status.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  function $(id) { return document.getElementById(id); }
+  function setText(id, text) { var el = $(id); if (el) el.textContent = text; }
+
+  var toastTimer = null;
+  function showToast(msg) {
+    var t = $('toast'); if (!t) return;
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2000);
+  }
+
+  var MODDIR = (function () {
+    var m = location.pathname.match(/^(.*)\/webroot\//) ||
+            location.pathname.match(/^(.*)\/webview\//);
+    return m ? m[1] : '/data/adb/modules/Hyperos_audio_core';
+  })();
+
+  function execShell(cmd, cb) {
+    var ksu = globalThis.ksu;
+    if (ksu && typeof ksu.exec === 'function') {
+      var name = '__ksu_cb_' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
+      globalThis[name] = function (errno, stdout, stderr) {
+        delete globalThis[name];
+        if (cb) cb(errno, stdout, stderr);
+      };
+      try { ksu.exec(cmd, '{}', name); return true; } catch (e) {}
+    }
+    if (window.ksu && typeof window.ksu.su === 'function') {
+      try { cb && cb(0, window.ksu.su(cmd), ''); return true; } catch (e) {}
+    }
+    if (window.Android && typeof window.Android.exec === 'function') {
+      try { window.Android.exec(cmd); cb && cb(0, '', ''); return true; } catch (e) {}
+    }
+    return false;
+  }
+
+  /* ═══════════ 状态渲染 ═══════════ */
+  var STATUS_IDS = ['st-alarm', 'st-notif', 'st-ring', 'st-ui', 'st-meta'];
+
+  function resetStatus() {
+    STATUS_IDS.forEach(function (id) {
+      var el = $(id); if (el) el.className = 'status-item status-wait';
+    });
+  }
+
+  function setStatusItem(id, ok, label, count) {
+    var el = $(id); if (!el) return;
+    el.className = 'status-item ' + (ok ? 'status-ok' : 'status-fail');
+    var span = el.querySelector('span:last-child');
+    if (span) span.textContent = count > 0 ? (label + ' ' + count + '个') : (label + ' 无');
+  }
+
+  function applyStatus(st) {
+    st = st || {};
+    var files = st.files || {};
+    var mount = st.mount || {};
+
+    var alarmList = Array.isArray(files.alarms)        ? files.alarms        : [];
+    var notifList = Array.isArray(files.notifications) ? files.notifications : [];
+    var ringList  = Array.isArray(files.ringtones)     ? files.ringtones     : [];
+    var uiList    = Array.isArray(files.ui)            ? files.ui            : [];
+
+    setStatusItem('st-alarm', !!mount.alarms,        '闹钟',   alarmList.length);
+    setStatusItem('st-notif', !!mount.notifications, '通知音', notifList.length);
+    setStatusItem('st-ring',  !!mount.ringtones,     '铃声',   ringList.length);
+    setStatusItem('st-ui',    !!mount.ui,            'UI 音效', uiList.length);
+
+    var stMeta = $('st-meta');
+    if (stMeta) {
+      stMeta.className = 'status-item ' + (st.metaModule ? 'status-ok' : 'status-fail');
+      var span = stMeta.querySelector('span:last-child');
+      if (span) span.textContent = '元模块 ' + (st.metaModule ? '✅' : '❌');
+    }
+
+    setText('dev-model',   st.model   || 'N/A');
+    setText('dev-android', st.android || 'N/A');
+    setText('dev-kernel',  st.kernel  || 'N/A');
+    setText('dev-root',    st.root    || 'N/A');
+    setText('meta-status', st.metaModule ? '✅ 已同步' : '未安装');
+
+    /* ── 名称 & 版本跟随 module.prop ── */
+    var vShow = st.versionDisplay
+      || (st.version ? (/^v/i.test(st.version) ? st.version : 'v' + st.version) : '');
+    if (vShow) {
+      setText('app-version',  vShow);
+      setText('info-version', vShow);
+    }
+    if (st.name) setText('info-name', st.name);
+  }
+
+  function onStatusFail() {
+    ['dev-model', 'dev-android', 'dev-kernel', 'dev-root'].forEach(function (id) {
+      setText(id, '读取失败');
+    });
+    setText('meta-status', '未知');
+    STATUS_IDS.forEach(function (id) {
+      var el = $(id);
+      if (el) el.className = 'status-item status-fail';
+    });
+  }
+
+  function loadStatus() {
+    resetStatus();
+
+    if (typeof MODULE_STATUS !== 'undefined' && MODULE_STATUS && MODULE_STATUS.model) {
+      applyStatus(MODULE_STATUS);
+      return;
+    }
+
+    fetch(MODDIR + '/webroot/webui_status.json?t=' + Date.now())
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(applyStatus)
+      .catch(function (err) {
+        console.warn('[webui] status fetch failed:', err);
+        showToast('状态读取失败');
+        onStatusFail();
+      });
+  }
+
+  /* ═══════════ 设置 ═══════════ */
+  var SETTING_DEFS = {
+    'set-selfmount': { key: 'selfmount', def: 1 }
+  };
+  var SETTING_CLI = MODDIR + '/common/settings-cli.sh';
+
+  function applySettingsToUI(s) {
+    s = s || {};
+    Object.keys(SETTING_DEFS).forEach(function (id) {
+      var def = SETTING_DEFS[id];
+      var el = $(id); if (!el) return;
+      var v = s[def.key];
+      if (v === undefined || v === null) el.checked = def.def === 1;
+      else el.checked = (v === 1 || v === '1' || v === true);
+    });
+  }
+
+  function loadSettings() {
+    if (typeof MODULE_SETTINGS !== 'undefined' && MODULE_SETTINGS) {
+      applySettingsToUI(MODULE_SETTINGS); return;
+    }
+    var cmd = 'sh "' + SETTING_CLI + '" dump';
+    var bridged = execShell(cmd, function (errno, stdout) {
+      if (errno !== 0 || !stdout) { applySettingsToUI({}); return; }
+      var s = {};
+      String(stdout).split(/\r?\n/).forEach(function (line) {
+        var m = line.match(/^(\w+)=([01])$/);
+        if (m) s[m[1]] = parseInt(m[2], 10);
+      });
+      applySettingsToUI(s);
+    });
+    if (!bridged) applySettingsToUI({});
+  }
+
+  function saveSetting(settingKey, value) {
+    if (!/^selfmount$/.test(settingKey)) return;
+    value = (value === 1 || value === '1') ? 1 : 0;
+    var cmd = 'sh "' + SETTING_CLI + '" set ' + settingKey + ' ' + value;
+    var bridged = execShell(cmd, function (errno, stdout) {
+      if (errno === 0 && String(stdout).indexOf('OK') >= 0) showToast('已保存，重启后生效');
+      else showToast('保存失败');
+    });
+    if (!bridged) showToast('无权限，无法保存');
+  }
+
+  Object.keys(SETTING_DEFS).forEach(function (id) {
+    var el = $(id); if (!el) return;
+    var key = SETTING_DEFS[id].key;
+    el.addEventListener('change', function () {
+      saveSetting(key, el.checked ? 1 : 0);
+    });
+  });
+
+  /* ═══════════ 外链 ═══════════ */
+  function escapeForShell(s) {
+    return String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+      .replace(/`/g, '\\`').replace(/\$/g, '\\$').replace(/\r?\n/g, '');
+  }
+
+  function openExternal(url) {
+    if (!/^https?:\/\//i.test(url)) return false;
+    var cmd = 'am start -a android.intent.action.VIEW -d "' + escapeForShell(url) + '"';
+    return execShell(cmd, null);
+  }
+
+  document.querySelectorAll('.community-link').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      var href = a.getAttribute('href');
+      if (!href || !/^https?:\/\//i.test(href)) return;
+      if (openExternal(href)) { e.preventDefault(); showToast('正在打开...'); }
+    });
+  });
+
+  /* ═══════════ 音效刷新 ═══════════ */
+  var RELOAD_CLI = MODDIR + '/reload.sh';
+
+  function runReload(mode) {
+    var out = $('reload-out'), b1 = $('btn-check'), b2 = $('btn-reload');
+    if (mode !== 'check' && !confirm('会重启一次系统界面，屏幕闪一下、几秒恢复。继续？')) return;
+    if (out) { out.hidden = false; out.textContent = '执行中…'; }
+    if (b1) b1.disabled = true;
+    if (b2) b2.disabled = true;
+
+    var cmd = 'sh "' + RELOAD_CLI + '"' + (mode === 'check' ? ' check' : '');
+    var bridged = execShell(cmd, function (errno, stdout, stderr) {
+      var text = String(stdout || '') + (stderr ? '\n' + stderr : '');
+      if (out) out.textContent = text.replace(/\s+$/, '') || ('（无输出 errno=' + errno + '）');
+      if (b1) b1.disabled = false;
+      if (b2) b2.disabled = false;
+      showToast(errno === 0 ? '已完成' : '出错 errno=' + errno);
+      loadStatus();
+    });
+    if (!bridged) {
+      if (out) out.textContent = '当前环境不支持执行命令（需要 KernelSU / 面具 的 WebUI）';
+      if (b1) b1.disabled = false;
+      if (b2) b2.disabled = false;
+      showToast('无权限');
+    }
+  }
+
+  (function () {
+    var b1 = $('btn-check'), b2 = $('btn-reload');
+    if (b1) b1.addEventListener('click', function () { runReload('check'); });
+    if (b2) b2.addEventListener('click', function () { runReload('reload'); });
+  })();
+
+  /* ═══════════ 启动 ═══════════ */
+  loadSettings();
+  loadStatus();
+})();
+</script>
+</body>
+</html>

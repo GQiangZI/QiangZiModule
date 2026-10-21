@@ -21,7 +21,7 @@ log() {
 }
 
 log "════════════════════════════════════════"
-log "=== post-fs-data 启动 (v2.0) ==="
+log "=== post-fs-data 启动 ==="
 log "MODDIR=$MODDIR"
 log "Android SDK: $(getprop ro.build.version.sdk)"
 

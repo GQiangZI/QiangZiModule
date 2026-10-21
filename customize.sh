@@ -14,10 +14,31 @@ log() {
 START_TIME=$(date +%s)
 log "模块安装开始"
 
-# 
-ui_print "注意事项~自行内置音效一定要对应系统目录下的文件名"
-ui_print "注意事项~自行内置音效一定要对应系统目录下的文件名"
-ui_print "注意事项~自行内置音效一定要对应系统目录下的文件名"
+#
+ui_print "╔═══════════════════════════════════════╗"
+ui_print "║                                       ║"
+ui_print "║          ⚠️  刷 入 前 必 读  ⚠️        ║"
+ui_print "║                                       ║"
+ui_print "╠═══════════════════════════════════════╣"
+ui_print "║ 如果你的手机是「锁屏 / 解锁音效不生效」 ║"
+ui_print "║ （音量、铃声都正常，只有这两个不响）， ║"
+ui_print "║ 请装好后做这一件事：                   ║"
+ui_print "║                                       ║"
+ui_print "║  KernelSU → 超级用户 → 系统界面        ║"
+ui_print "║  (com.android.systemui)                ║"
+ui_print "║  → App Profile 选【自定义】            ║"
+ui_print "║  →「卸载模块」开关保持【关闭】         ║"
+ui_print "║  → 重启手机                            ║"
+ui_print "║                                       ║"
+ui_print "║ 原因：这个开关开着时，KernelSU 会给    ║"
+ui_print "║ 系统界面单独建一个挂载空间，把模块挂载 ║"
+ui_print "║ 卸掉，系统界面读到的还是原厂音效。      ║"
+ui_print "║                                       ║"
+ui_print "║ 注意方向：是【关闭】「卸载模块」，      ║"
+ui_print "║ 不是打开。关掉后系统界面就能正常读到    ║"
+ui_print "║ 模块音效，与正常机型行为一致。          ║"
+ui_print "╚═══════════════════════════════════════╝"
+ui_print ""
 ui_print "╔═══════════════════════════════════════╗"
 ui_print "║                                       ║"
 ui_print "║     🎵 小米音效定制模块 🎵            ║"
@@ -25,6 +46,8 @@ ui_print "║                                       ║"
 ui_print "║     通知音 · 铃声 · UI 音效           ║"
 ui_print "║                                       ║"
 ui_print "╚═══════════════════════════════════════╝"
+ui_print ""
+ui_print "注意事项：自行添加音效时，文件名必须与系统目录下已有的文件名一致"
 ui_print ""
 # 设备信息
 MODEL=$(getprop ro.product.marketname 2>/dev/null)
@@ -45,7 +68,8 @@ ui_print ""
 ui_print "┌─ 📦 模块信息 ─────────────────────────"
 ui_print "│ 名称 : 小米音效定制模块"
 ui_print "│ 作者 : 酷安-強子Loner"
-ui_print "│ 版本 : v2.0"
+VER=$(grep -m1 '^version=' "$MODPATH/module.prop" 2>/dev/null | cut -d= -f2-)
+ui_print "│ 版本 : ${VER:-未知}"
 ui_print "│ 挂载 : post-fs-data 手动 bind mount"
 ui_print "│ 源路径 : system/product/media/audio/"
 ui_print "│ 目标 : /product/media/audio/"
@@ -60,6 +84,7 @@ ui_print "┌─ ✨ 功能 ─────────────────�
 ui_print "│  ✓ 替换解锁 / 锁屏 / 充电音效"
 ui_print "│  ✓ 加入三星口哨 / 车锁 / 苹果三全音"
 ui_print "│  ✓ 支持 WebUI 控制面板/面具用户可自行安装WebuiAPKAPP"
+ui_print "│  ✓ 无常驻进程 · 开机挂载一次即止"
 ui_print "│  ✓ 支持元模块自动同步"
 ui_print "└───────────────────────────────────────"
 ui_print ""
@@ -84,17 +109,21 @@ fi
 ui_print "  ⚙ 设置脚本权限..."
 set_perm_recursive "$MODPATH" 0 0 0755 0644
 SCRIPT_OK=0
-for f in post-fs-data.sh service.sh action.sh; do
-    if [ -f "$MODPATH/$f" ]; then
-        set_perm "$MODPATH/$f" 0 0 0755
+SCRIPT_ALL=0
+for f in "$MODPATH"/*.sh; do
+    [ -f "$f" ] || continue
+    SCRIPT_ALL=$((SCRIPT_ALL + 1))
+    if set_perm "$f" 0 0 0755; then
         SCRIPT_OK=$((SCRIPT_OK + 1))
-        log "chmod 0755: $f"
+        log "chmod 0755: ${f##*/}"
     else
-        ui_print "    ⚠ 缺少 $f"
-        log "缺少 $f"
+        log "chmod 失败: ${f##*/}"
     fi
 done
-ui_print "    ✓ $SCRIPT_OK/3 脚本就绪"
+for f in post-fs-data.sh service.sh; do
+    [ -f "$MODPATH/$f" ] || { ui_print "    ⚠ 缺少关键脚本 $f"; log "!! 缺少 $f"; }
+done
+ui_print "    ✓ $SCRIPT_OK/$SCRIPT_ALL 个脚本已设为 0755"
 
 # ③ common 目录
 if [ -d "$MODPATH/common" ]; then
@@ -168,5 +197,19 @@ ui_print "  ╚═════════════════════�
 ui_print ""
 ui_print "  ⏱ 耗时: ${DURATION}s"
 ui_print "  📂 日志: 模块目录/install.log"
-ui_print "  💡 提示: 重启后在 KernelSU 里打开 WebUI 可查看状态"
+ui_print "  💡 提示: 重启后打开 WebUI 可看状态、手动刷新音效"
+ui_print "          模块无常驻进程，不会自动重启界面"
+ui_print ""
+ui_print "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+ui_print " ❗ 锁屏 / 解锁音效不响？九成是这一个开关："
+ui_print ""
+ui_print "    KernelSU → 超级用户 → 系统界面"
+ui_print "    (com.android.systemui)"
+ui_print "    → App Profile 选【自定义】"
+ui_print "    → 「卸载模块」保持【关闭】 → 重启手机"
+ui_print ""
+ui_print "    重启后看模块列表里的描述："
+ui_print "    [ 闹✅ 铃✅ 通✅ UI✅ ] 已就绪 = 四类都挂上了"
+ui_print "    出现 ❌ 就是那一类没挂上。"
+ui_print "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 ui_print ""

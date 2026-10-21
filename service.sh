@@ -17,7 +17,7 @@ log() {
 }
 
 log "════════════════════════════════════════"
-log "=== service.sh 启动 (v2.0) ==="
+log "=== service.sh 启动 ==="
 
 HAS_CONTENT=0
 command -v content >/dev/null 2>&1 && HAS_CONTENT=1
@@ -45,8 +45,8 @@ MODULE_VCODE=$(grep -m1 '^versionCode=' "$MODDIR/module.prop" 2>/dev/null | cut 
 
 [ -z "$MODULE_ID" ]    && MODULE_ID="Hyperos_audio_core"
 [ -z "$MODULE_NAME" ]  && MODULE_NAME="小米音效定制模块"
-[ -z "$MODULE_VER" ]   && MODULE_VER="2.0"
-[ -z "$MODULE_VCODE" ] && MODULE_VCODE="2"
+[ -z "$MODULE_VER" ]   && MODULE_VER=""
+[ -z "$MODULE_VCODE" ] && MODULE_VCODE="0"
 
 log "模块: $MODULE_NAME $MODULE_VER"
 # ═══════════════════════════════════════════
@@ -146,111 +146,10 @@ log "挂载状态: 闹钟=$MOUNT_ALARM 通知=$MOUNT_NOTIF 铃声=$MOUNT_RING UI
 # ═══════════════════════════════════════════
 # MediaStore 索引
 # ═══════════════════════════════════════════
-get_mime() {
-    case "$1" in
-        ogg) echo "audio/ogg" ;;
-        mp3) echo "audio/mpeg" ;;
-        wav) echo "audio/x-wav" ;;
-        m4a|aac) echo "audio/mp4" ;;
-        flac) echo "audio/flac" ;;
-        *) echo "" ;;
-    esac
-}
-
-in_mediastore() {
-    local path="$1"
-    [ "$HAS_CONTENT" = "1" ] || return 1
-    local safe
-    safe=$(printf '%s' "$path" | sed "s/'/''/g")
-    content query --uri content://media/internal/audio/media \
-        --projection _data --where "_data='$safe'" 2>/dev/null | grep -qF "$path"
-}
-
-wait_for_index() {
-    local path="$1" tries=0
-    while [ "$tries" -lt 5 ]; do
-        in_mediastore "$path" && return 0
-        sleep 0.3
-        tries=$((tries + 1))
-    done
-    return 1
-}
-
-scan_and_index() {
-    local category="$1" dst_dir="$2"
-    local flag_name=""
-    case "$category" in
-        alarms)        flag_name="is_alarm" ;;
-        notifications) flag_name="is_notification" ;;
-        ringtones)     flag_name="is_ringtone" ;;
-        *) log "  索引[$category]: 跳过"; return ;;
-    esac
-
-    [ "$HAS_CONTENT" = "1" ] || { log "  索引[$category]: content 不可用，跳过"; return; }
-    [ -d "$dst_dir" ]        || { log "  索引[$category]: 目标不存在"; return; }
-
-    local skip=0 scan_ok=0 insert_ok=0 fail=0
-    for f in "$dst_dir"/*; do
-        [ -f "$f" ] || continue
-        local fname="${f##*/}"
-        local ext="${fname##*.}"; ext=$(echo "$ext" | tr 'A-Z' 'a-z')
-        local mime; mime=$(get_mime "$ext")
-        local fullpath="$dst_dir/$fname"
-
-        if in_mediastore "$fullpath"; then
-            skip=$((skip + 1)); continue
-        fi
-
-        am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE \
-            -d "file://$fullpath" >/dev/null 2>&1
-
-        if wait_for_index "$fullpath"; then
-            scan_ok=$((scan_ok + 1))
-            log "    索引[$category]: $fname 广播 ✓"
-            continue
-        fi
-
-        if [ -n "$mime" ]; then
-            content insert --uri content://media/internal/audio/media \
-                --bind _data:s:"$fullpath" \
-                --bind title:s:"$fname" \
-                --bind mime_type:s:"$mime" \
-                --bind "$flag_name":i:1 \
-                --bind is_alarm:i:0 \
-                --bind is_music:i:0 \
-                >/dev/null 2>&1
-            if wait_for_index "$fullpath"; then
-                insert_ok=$((insert_ok + 1))
-                log "    索引[$category]: $fname insert ✓"
-            else
-                fail=$((fail + 1))
-                log "    索引[$category]: $fname insert ✗"
-            fi
-        else
-            fail=$((fail + 1))
-            log "    索引[$category]: $fname 格式不支持 ($ext)"
-        fi
-    done
-    log "  索引[$category]: 已索引=$skip 扫描=$scan_ok insert=$insert_ok 失败=$fail"
-}
-
-# 清除 MediaStore 记录
-if [ "$HAS_CONTENT" = "1" ]; then
-    log "清除 MediaStore 中本模块记录"
-    content delete --uri content://media/internal/audio/media \
-        --where "_data LIKE '/product/media/audio/%'" >/dev/null 2>&1
-fi
-
-# 扫描（无源文件的分类跳过）
-log "开始 MediaStore 索引"
-for cat in alarms notifications ringtones; do
-    if [ -d "$AUDIO_SRC/$cat" ] && [ "$(ls -1 "$AUDIO_SRC/$cat" 2>/dev/null | wc -l)" -gt 0 ]; then
-        scan_and_index "$cat" "/product/media/audio/$cat"
-    else
-        log "  索引[$cat]: 模块无源文件，跳过"
-    fi
-done
-# UI 不进 MediaStore
+# ── MediaStore：不做主动删除 / 重新 insert ──
+# 早期版本会先 content delete 掉全部索引再重新插入，
+# 这会短暂清空整机的铃声/通知音索引，风险大于收益；挂载本身已生效，这里保持不动。
+log "MediaStore: 跳过主动删除/insert，避免影响系统音效索引"
 
 # ═══════════════════════════════════════════
 # 生成 WebUI 状态
@@ -347,5 +246,6 @@ EOF
 mv "$tmp_json" "$MODDIR/webroot/webui_status.json" 2>/dev/null
 
 log "WebUI 状态已更新 (共 $TOTAL 个音效)"
+
 log "=== service.sh 完成 ==="
 exit 0
